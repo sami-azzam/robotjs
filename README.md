@@ -172,7 +172,7 @@ I like AutoHotkey, but I like Node.js more. By developing RobotJS I get an AutoH
 
 ## Publishing
 
-On every push to main branch, the .github/workflows/ci.yml will create a new version and publish to npm.
+On every push to main branch with a change in .electron-target, the .github/workflows/electron-prebuild.yml will create a new version and publish to npm.
 
 If a major or minor release is required, use respective key words in the commit message, see https://github.com/phips28/gh-action-bump-version#workflow
 

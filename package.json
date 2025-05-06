@@ -16,7 +16,8 @@
     "prebuild-linux-arm64": "prebuildify -t 20.0.0 --napi --strip",
     "prebuild-win32-x86": "prebuildify -t 20.0.0 --napi --strip",
     "prebuild-win32-x64": "prebuildify -t 20.0.0 --napi --strip",
-    "prebuild-win32-arm64": "prebuildify -t 20.0.0 --napi --strip"
+    "prebuild-win32-arm64": "prebuildify -t 20.0.0 --napi --strip",
+    "prebuild:electron": "cross-env ELECTRON_VER=$(node -p \"require('fs').readFileSync('.electron-target','utf8').trim()\") prebuildify -r electron -t $ELECTRON_VER --napi --strip"
   },
   "repository": {
     "type": "git",
@@ -56,6 +57,7 @@
     "node-gyp-build": "^4.8.4"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "jasmine": "^2.99.0",
     "prebuildify": "^6.0.1",
     "run-script-os": "^1.0.3",

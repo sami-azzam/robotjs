@@ -1,0 +1,117 @@
+name: Electron prebuilds & npm publish
+
+# ────────────────────────────────────────────────────────────────
+# 1. Trigger: any change to .electron-target or native sources
+# ────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - ".electron-target"
+      - "src/**"
+      - "binding.gyp"
+      - ".github/workflows/electron-prebuild.yml"
+
+concurrency:
+  group: ${{ github.ref }}-electron
+  cancel-in-progress: true
+
+permissions:
+  contents: write           # required by bump-version action
+  id-token: write           # provenance for npm publish
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # Build the pre-built binaries for each OS / arch
+  # ──────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.build-group }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            arch: x64
+            build-group: linux-x64
+            build-cmd: npm run prebuild:electron
+          - os: ubuntu-22.04-arm           # self-hosted ARM runner
+            arch: arm64
+            build-group: linux-arm64
+            build-cmd: npm run prebuild:electron
+          - os: macos-13
+            arch: x64
+            build-group: darwin-universal
+            build-cmd: npm run prebuild:electron -- -u       # universal binary
+          - os: windows-2019
+            arch: x86
+            build-group: win32-x86
+            build-cmd: npm run prebuild:electron
+          - os: windows-2019
+            arch: x64
+            build-group: win32-x64
+            build-cmd: npm run prebuild:electron
+          - os: windows-11-arm
+            arch: arm64
+            build-group: win32-arm64
+            build-cmd: npm run prebuild:electron
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20               # Electron 26 internal Node
+          architecture: ${{ matrix.arch }}
+
+      - name: Extra Linux libs
+        if: ${{ contains(matrix.build-group, 'linux') }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxtst-dev libpng++-dev
+
+      - run: npm ci
+
+      - name: Build Electron prebuild
+        run: ${{ matrix.build-cmd }}
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prebuilds-${{ matrix.build-group }}
+          path: prebuilds/
+          if-no-files-found: error
+
+  # ──────────────────────────────────────────────────────────────
+  # Publish step – runs only on direct pushes to master
+  # ──────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to npm
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: prebuilds-*
+          path: prebuilds
+          merge-multiple: true
+
+      # bump patch version and create Git tag
+      - uses: phips28/gh-action-bump-version@95099cd5edcdae43499bc94202b9d907e739e9c8
+        with:
+          tag-prefix: 'v'
+          version-type: 'patch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish package
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
