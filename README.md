@@ -1,6 +1,5 @@
 # Important note
-
-This repository is a fork of the original robotjs so we can generate prebuilt packages. All changes have been upstreamed, and should they be applied and prebuilt packages provided this fork shall be abandoned.
+This repository is a fork @jitsi/robotjs which is a fork of the original robotjs so we can generate prebuilt packages. All changes have been upstreamed, and should they be applied and prebuilt packages provided this fork shall be abandoned.
 
 <p align="center"><img src="https://cldup.com/1ATDf2JMtv.png"></p>
 
