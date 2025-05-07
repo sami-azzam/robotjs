@@ -43,18 +43,18 @@ jobs:
             arch: x64
             build-group: darwin-universal
             build-cmd: npm run prebuild:electron -- -u       # universal binary
-          - os: windows-2019
-            arch: x86
-            build-group: win32-x86
-            build-cmd: npm run prebuild:electron
+          # - os: windows-2019
+          #   arch: x86
+          #   build-group: win32-x86
+          #   build-cmd: npm run prebuild:electron
           - os: windows-2019
             arch: x64
             build-group: win32-x64
             build-cmd: npm run prebuild:electron
-          - os: windows-11-arm
-            arch: arm64
-            build-group: win32-arm64
-            build-cmd: npm run prebuild:electron
+          # - os: windows-11-arm
+          #   arch: arm64
+          #   build-group: win32-arm64
+          #   build-cmd: npm run prebuild:electron
     steps:
       - uses: actions/checkout@v4
 

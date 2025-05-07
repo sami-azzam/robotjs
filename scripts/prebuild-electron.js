@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 /**
- * Reads .electron-target → runs prebuildify for that Electron ABI.
- * Works on every shell / CI provider.
+ * Produce Electron prebuilds for all platforms.
+ * - Works on Windows (npx.cmd) and *nix (npx)
+ * - Fails loudly if no prebuilds are generated
  */
-const { readFileSync, existsSync } = require('fs');
-const { spawnSync }               = require('child_process');
-const path                        = require('path');
+const { readFileSync, existsSync, readdirSync } = require('fs');
+const { join, resolve }                         = require('path');
+const { spawnSync }                             = require('child_process');
 
-const targetFile = path.resolve(__dirname, '..', '.electron-target');
+const root        = resolve(__dirname, '..');
+const targetFile  = resolve(root, '.electron-target');
+const prebuildDir = resolve(root, 'prebuilds');
+
 if (!existsSync(targetFile)) {
   console.error('❌  .electron-target not found. Put the Electron version in it.');
   process.exit(1);
@@ -19,16 +23,36 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) {
   process.exit(1);
 }
 
+// Pick the right npx binary for the host OS
+const NPX = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+
 const { status } = spawnSync(
-  'npx',
+  NPX,
   [
+    '--no-install',          // don’t hit the network – prebuildify is already dep
     'prebuildify',
     '-r', 'electron',
-    '-t', `electron@${version}`,    // ← guaranteed string
+    '-t', `electron@${version}`,
     '--napi',
     '--strip'
   ],
   { stdio: 'inherit' }
 );
 
-process.exit(status ?? 0);
+if (status !== 0) {
+  console.error('❌  prebuildify failed');
+  process.exit(status);
+}
+
+// Ensure we actually produced a prebuild for *this* platform/arch
+const platArch = `${process.platform}-${process.arch}`;
+const dir      = join(prebuildDir, platArch);
+
+try {
+  const files = readdirSync(dir);
+  if (!files.length) throw new Error();
+  console.log(`✅  Created ${files.length} prebuild file(s) in ${dir}`);
+} catch {
+  console.error(`❌  No prebuilds were generated in ${dir}`);
+  process.exit(1);
+}
