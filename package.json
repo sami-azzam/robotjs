@@ -17,7 +17,7 @@
     "prebuild-win32-x86": "prebuildify -t 20.0.0 --napi --strip",
     "prebuild-win32-x64": "prebuildify -t 20.0.0 --napi --strip",
     "prebuild-win32-arm64": "prebuildify -t 20.0.0 --napi --strip",
-    "prebuild:electron": "cross-env ELECTRON_VER=$(node -p \"require('fs').readFileSync('.electron-target','utf8').trim()\") prebuildify -r electron -t $ELECTRON_VER --napi --strip"
+    "prebuild:electron": "node ./scripts/prebuild-electron.js"
   },
   "repository": {
     "type": "git",
