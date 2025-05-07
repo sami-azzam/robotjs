@@ -32,9 +32,9 @@ This is a work in progress so the exported functions could change at any time be
 Install RobotJS using npm:
 
 ```
-npm install @jitsi/robotjs
+npm install sami-robotjs
 ```
-It's that easy! npm will download one of the prebuilt [binaries](https://github.com/jitsi/robotjs/releases/latest) for your OS.
+It's that easy! npm will download one of the prebuilt [binaries](https://github.com/sami-azzam/robotjs/releases/latest) for your OS.
 
 You can get npm [here](https://nodejs.org/en/download/) if you don't have it installed.
 
