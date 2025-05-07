@@ -1,63 +1,79 @@
 #!/usr/bin/env node
-/**
- * Generate Electron prebuilds for the current OS / arch.
- * Works on Windows-2019 runners (Git-Bash), macOS and Linux.
- */
+/*  scripts/prebuild-electron.js
+    -----------------------------------------
+    Create Node-API prebuilds for the Electron
+    versions listed in the “.electron-target”
+    file at the project root.
 
-const { readFileSync, existsSync, readdirSync } = require('fs');
-const { resolve, join }                         = require('path');
-const { spawnSync }                             = require('child_process');
+    – 2025-05 cross-platform edition –
+       (fixes Windows EINVAL spawn issue)
+*/
+"use strict";
 
-const root        = resolve(__dirname, '..');
-const targetFile  = resolve(root, '.electron-target');
-const prebuildDir = resolve(root, 'prebuilds');
+const { readFileSync } = require("node:fs");
+const { resolve } = require("node:path");
+const { spawnSync } = require("node:child_process");
 
-if (!existsSync(targetFile)) {
-  console.error('❌  .electron-target not found.');
-  process.exit(1);
-}
-
-const version = readFileSync(targetFile, 'utf8').trim();
-if (!/^\d+\.\d+\.\d+$/.test(version)) {
-  console.error(`❌  "${version}" is not a valid semver Electron version`);
-  process.exit(1);
-}
-
-/* ---------- locate the real npx entry-point ------------------- */
-const npmPrefix  = resolve(process.execPath, '..', '..');           // e.g. C:\hostedtoolcache\windows\node\20.19.1\x64
-const npxCliPath = resolve(npmPrefix, 'lib', 'node_modules', 'npm', 'bin', 'npx-cli.js');
-
-/* ---------- run prebuildify ----------------------------------- */
-const { status, error, stderr } = spawnSync(
-  process.execPath,                 // the current Node binary
-  [
-    npxCliPath,                     // JS entry point of npx
-    '--no-install',
-    'prebuildify',
-    '-r', 'electron',
-    '-t', `electron@${version}`,
-    '--napi',
-    '--strip'
-  ],
-  { stdio: 'inherit' }
-);
-
-if (status !== 0) {
-  console.error('❌  prebuildify failed');
-  if (error) console.error(error);
-  if (stderr) console.error(stderr.toString());
-  process.exit(status);
-}
-
-/* ---------- sanity-check output ------------------------------- */
-const platArch = `${process.platform}-${process.arch}`;
-const dir      = join(prebuildDir, platArch);
-
+// ─────────────────────────────────────────────
+// 1) locate Electron versions we should build
+// ─────────────────────────────────────────────
+const targetsFile = resolve(__dirname, "..", ".electron-target");
+let versions;
 try {
-  const files = readdirSync(dir);
-  if (!files.length) throw new Error();
-  console.log(`✅  ${files.length} prebuild file(s) in ${dir}`);
-} catch {
-  console.error(`❌  No prebuilds were generated in ${dir}`);
+  versions = readFileSync(targetsFile, "utf8")
+    .trim()
+    .split(/\r?\n/)
+    .filter(Boolean); // ignore blank lines
+} catch (err) {
+  console.error(`❌  Cannot read ${targetsFile}:`, err.message);
   process.exit(1);
 }
+
+if (versions.length === 0) {
+  console.error("❌  No Electron versions specified in .electron-target");
+  process.exit(1);
+}
+
+// helper – get absolute path to the prebuildify CLI JS file
+function prebuildifyBin() {
+  //   node_modules/prebuildify/bin.js
+  return resolve(require.resolve("prebuildify"), "../../bin.js");
+}
+
+// ─────────────────────────────────────────────
+// 2) build each Electron target
+// ─────────────────────────────────────────────
+const commonArgs = [
+  "--napi", // Node-API build (works across ABIs)
+  "--strip", // smaller binaries
+];
+
+for (const version of versions) {
+  console.log(`\n▶ Prebuilding for Electron ${version} …`);
+
+  /*  On *all* platforms we spawn:     node  <prebuildify.js>  -r electron -t electron@<v> …
+      This avoids the npx.cmd wrapper (which triggers EINVAL on Windows
+      after Node 20.12.2 security hardening).                              */
+  const { status, error } = spawnSync(
+    process.execPath, // current node.exe / node
+    [
+      prebuildifyBin(),
+      "-r",
+      "electron",
+      "-t",
+      `electron@${version}`,
+      ...commonArgs,
+    ],
+    { stdio: "inherit" } // stream output live
+  );
+
+  if (status !== 0) {
+    console.error("❌  prebuildify failed", error ?? "");
+    process.exit(status ?? 1); // abort the entire job
+  }
+}
+
+// ─────────────────────────────────────────────
+// 3) success summary
+// ─────────────────────────────────────────────
+console.log("\n✅  All Electron prebuilds generated → ./prebuilds/");
