@@ -26,7 +26,7 @@ if (!/^\d+\.\d+\.\d+$/.test(version)) {
 // Pick the right npx binary for the host OS
 const NPX = process.platform === 'win32' ? 'npx.cmd' : 'npx';
 
-const { status } = spawnSync(
+const { status, error, output } = spawnSync(
   NPX,
   [
     '--no-install',          // don’t hit the network – prebuildify is already dep
@@ -41,6 +41,13 @@ const { status } = spawnSync(
 
 if (status !== 0) {
   console.error('❌  prebuildify failed');
+  if (error) {
+    console.error('❌  Error:');
+    console.error(error);
+  } else if (output && output.length) {
+    console.error('❌  Output:');
+    console.error(output.join('\n'));
+  }
   process.exit(status);
 }
 
