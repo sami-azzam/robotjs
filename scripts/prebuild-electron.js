@@ -40,6 +40,14 @@ function prebuildifyBin() {
   return resolve(require.resolve("prebuildify"), "../../bin.js");
 }
 
+// helper – robustly locate the CLI entry-point inside prebuildify ----------------
+function prebuildifyBin() {
+  // 1) load its package.json
+  const pkg = require("prebuildify/package.json");
+  // 2) pkg.bin is usually "./bin.js"
+  return resolve(require.resolve("prebuildify"), "..", pkg.bin.prebuildify);
+}
+
 // ─────────────────────────────────────────────
 // 2) build each Electron target
 // ─────────────────────────────────────────────
